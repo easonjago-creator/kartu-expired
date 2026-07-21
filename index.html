@@ -29,12 +29,42 @@ dialog{border:0;border-radius:14px;max-width:600px;width:calc(100% - 30px);paddi
 dialog::backdrop{background:rgba(16,24,40,.55)}.modal-head{padding:17px 20px;background:#fff4ed}.modal-body{padding:18px 20px;max-height:60vh;overflow:auto}.modal-foot{padding:14px 20px;text-align:right}.modal-foot button{width:auto}
 @media(max-width:900px){.grid{grid-template-columns:1fr 1fr}.summary{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.container{padding:12px}.grid{grid-template-columns:1fr}.toolbar input{width:100%}.toolbar-left,.toolbar-right{width:100%}}
+
+.login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1d4ed8);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.login-card{width:100%;max-width:390px;background:#fff;border-radius:18px;padding:26px;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+.login-card h2{margin:0 0 6px}.login-card p{color:var(--muted);margin:0 0 20px}
+.login-card .field{margin-bottom:14px}.login-error{display:none;background:#fff1f0;color:#b42318;border:1px solid #fecdca;padding:10px;border-radius:8px;margin-bottom:12px}
+.tabs{display:flex;gap:8px;margin-bottom:18px}
+.tab-btn{width:auto;padding:11px 22px;background:#fff;border:1px solid var(--border);color:#344054}
+.tab-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.topbar{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.logout-btn{width:auto;background:#fff;color:#b42318;border-color:#fecdca}
+
 </style>
 </head>
 <body>
+
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <h2>Login Aplikasi</h2>
+    <p>Masukkan ID dan password untuk mengakses data.</p>
+    <div id="loginError" class="login-error">ID atau password salah.</div>
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginId">Login ID</label>
+        <input id="loginId" autocomplete="username" required placeholder="Masukkan ID">
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Masukkan password">
+      </div>
+      <button class="btn-primary" type="submit">Login</button>
+    </form>
+  </div>
+</div>
+
 <div class="container">
-<h1>Alert Masa Aktif Kartu</h1>
-<p class="subtitle">Database online bersama <span id="syncStatus" class="sync">Menghubungkan...</span></p>
+<div class="topbar"><div><h1>Alert Masa Aktif Kartu</h1><p class="subtitle">Database online bersama <span id="syncStatus" class="sync">Menghubungkan...</span></p></div><button id="logoutBtn" class="logout-btn" type="button">Logout</button></div><div class="tabs"><button class="tab-btn active" data-tab="MMD" type="button">MMD</button><button class="tab-btn" data-tab="RATU" type="button">Ratu</button></div>
 <div id="notice" class="notice"></div>
 <div class="summary">
 <div class="stat"><small>Total kartu</small><strong id="totalCount">0</strong></div>
@@ -47,9 +77,9 @@ dialog::backdrop{background:rgba(16,24,40,.55)}.modal-head{padding:17px 20px;bac
 <form id="cardForm">
 <input type="hidden" id="editId">
 <div class="grid">
-<div><label>Nomor Kartu / Nomor HP</label><input id="cardNumber" required placeholder="INI NOMOR"></div>
+<div><label>Nomor Kartu / Nomor HP</label><input id="cardNumber" required placeholder="082287394582"></div>
 <div><label>Bank</label><input id="bank" required placeholder="BCA"></div>
-<div><label>Nama</label><input id="name" required placeholder="ISI NAMA REKENING"></div>
+<div><label>Nama</label><input id="name" required placeholder="ARIF KURNIA"></div>
 <div><label>Masa Aktif</label><input id="expiryDate" type="date" required></div>
 <div><label>Alert berapa hari sebelumnya?</label><input id="alertDays" type="number" min="0" value="10" required></div>
 <div><label>Catatan</label><input id="notes" placeholder="Contoh: Nomor utama operasional"></div>
@@ -95,6 +125,7 @@ dialog::backdrop{background:rgba(16,24,40,.55)}.modal-head{padding:17px 20px;bac
 
 <script>
 let cards=[];
+let activeTab="MMD";
 const $=id=>document.getElementById(id);
 const todayStart=()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())};
 const parseDate=v=>{const [y,m,d]=v.split("-").map(Number);return new Date(y,m-1,d)};
@@ -127,7 +158,7 @@ async function loadCards(showAlert=false){
 }
 function render(){
  const q=$("search").value.trim().toLowerCase(), filter=$("statusFilter").value;
- const all=cards.map(computed);
+ const all=cards.filter(c=>(c.group_name||"MMD")===activeTab).map(computed);
  $("totalCount").textContent=all.length;
  $("alertCount").textContent=all.filter(x=>x.status==="ALERT").length;
  $("expiredCount").textContent=all.filter(x=>x.status==="EXPIRED").length;
@@ -152,7 +183,7 @@ $("cardForm").onsubmit=async e=>{
  e.preventDefault();
  const id=$("editId").value;
  const body={card_number:$("cardNumber").value.trim(),bank:$("bank").value.trim().toUpperCase(),
- name:$("name").value.trim().toUpperCase(),expiry_date:$("expiryDate").value,alert_days:Number($("alertDays").value),notes:$("notes").value.trim(),back_code:$("backCode").value.trim()};
+ name:$("name").value.trim().toUpperCase(),expiry_date:$("expiryDate").value,alert_days:Number($("alertDays").value),notes:$("notes").value.trim(),back_code:$("backCode").value.trim(),group_name:activeTab};
  try{
   $("saveBtn").disabled=true;
   await api(id?`?id=${id}`:"",{method:id?"PUT":"POST",body:JSON.stringify(body)});
@@ -182,8 +213,47 @@ function checkAlerts(){
  if("Notification"in window&&Notification.permission==="granted")
  new Notification("Alert Masa Aktif Kartu",{body:`${items.length} kartu perlu diperiksa.`});
 }
-loadCards(true);
-setInterval(()=>loadCards(false),30000);
+
+const LOGIN_ID = "mmd";
+const LOGIN_PASSWORD = "mmd777";
+
+function showAppAfterLogin(){
+  $("loginScreen").style.display="none";
+  loadCards(true);
+}
+
+$("loginForm").addEventListener("submit", e=>{
+  e.preventDefault();
+  const id=$("loginId").value.trim();
+  const pass=$("loginPassword").value;
+  if(id===LOGIN_ID && pass===LOGIN_PASSWORD){
+    sessionStorage.setItem("cardAppLoggedIn","1");
+    $("loginError").style.display="none";
+    showAppAfterLogin();
+  }else{
+    $("loginError").style.display="block";
+  }
+});
+
+$("logoutBtn").onclick=()=>{
+  sessionStorage.removeItem("cardAppLoggedIn");
+  location.reload();
+};
+
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    activeTab=btn.dataset.tab;
+    document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));
+    btn.classList.add("active");
+    resetForm();
+    render();
+  });
+});
+
+if(sessionStorage.getItem("cardAppLoggedIn")==="1"){
+  showAppAfterLogin();
+}
+setInterval(()=>{if(sessionStorage.getItem("cardAppLoggedIn")==="1")loadCards(false)},30000);
 </script>
 </body>
 </html>

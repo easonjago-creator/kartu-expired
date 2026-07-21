@@ -117,7 +117,14 @@ async function api(url="",options={}){
 async function loadCards(showAlert=false){
  try{
   setSync("Sinkronisasi...");
-  cards=await api();
+  const response = await api();
+
+cards = Array.isArray(response)
+  ? response
+  : Array.isArray(response.results)
+    ? response.results
+    : [];
+  
   setSync("● Tersinkron","online");
   render();
   if(showAlert)checkAlerts();

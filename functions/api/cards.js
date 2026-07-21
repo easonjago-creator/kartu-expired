@@ -11,7 +11,7 @@ function validate(body) {
   if (!body.bank?.trim()) throw new Error("Bank wajib diisi.");
   if (!body.name?.trim()) throw new Error("Nama wajib diisi.");
   if (!body.expiry_date) throw new Error("Masa aktif wajib diisi.");
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(body.expiry_date)) throw new Error("Format tanggal tidak valid.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(body.expiry_date)) throw new Error("Format tanggal tidak valid.");
   if (!Number.isFinite(Number(body.alert_days)) || Number(body.alert_days) < 0) throw new Error("Jumlah hari alert tidak valid.");
 }
 

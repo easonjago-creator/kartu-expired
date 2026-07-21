@@ -19,7 +19,7 @@ export async function onRequestGet(context) {
   try {
     if (!context.env.DB) throw new Error("Binding database DB belum aktif.");
     const result = await context.env.DB.prepare(
-      `SELECT id, card_number, bank, name, expiry_date, alert_days, notes, back_code, created_at, updated_at
+      `SELECT id, card_number, bank, name, expiry_date, alert_days, notes, back_code, group_name, created_at, updated_at
        FROM cards ORDER BY expiry_date ASC`
     ).all();
     return json(result.results || []);
@@ -34,8 +34,8 @@ export async function onRequestPost(context) {
     const body = await context.request.json();
     validate(body);
     const result = await context.env.DB.prepare(
-      `INSERT INTO cards (card_number, bank, name, expiry_date, alert_days, notes, back_code)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO cards (card_number, bank, name, expiry_date, alert_days, notes, back_code, group_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       body.card_number.trim(),
       body.bank.trim().toUpperCase(),
@@ -43,7 +43,8 @@ export async function onRequestPost(context) {
       body.expiry_date,
       Number(body.alert_days),
       (body.notes || "").trim(),
-      (body.back_code || "").trim()
+      (body.back_code || "").trim(),
+      (body.group_name || "MMD").trim().toUpperCase()
     ).run();
     if (!result.success) throw new Error("Database menolak penyimpanan data.");
     return json({ success: true, id: result.meta?.last_row_id || null }, 201);
@@ -61,7 +62,7 @@ export async function onRequestPut(context) {
     validate(body);
     const result = await context.env.DB.prepare(
       `UPDATE cards SET card_number=?, bank=?, name=?, expiry_date=?, alert_days=?,
-       notes=?, back_code=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`
+       notes=?, back_code=?, group_name=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`
     ).bind(
       body.card_number.trim(),
       body.bank.trim().toUpperCase(),
@@ -70,6 +71,7 @@ export async function onRequestPut(context) {
       Number(body.alert_days),
       (body.notes || "").trim(),
       (body.back_code || "").trim(),
+      (body.group_name || "MMD").trim().toUpperCase(),
       Number(id)
     ).run();
     if (!result.success) throw new Error("Database gagal memperbarui data.");

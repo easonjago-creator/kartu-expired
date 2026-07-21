@@ -52,6 +52,8 @@ dialog::backdrop{background:rgba(16,24,40,.55)}.modal-head{padding:17px 20px;bac
 <div><label>Nama</label><input id="name" required placeholder="ARIF KURNIA"></div>
 <div><label>Masa Aktif</label><input id="expiryDate" type="date" required></div>
 <div><label>Alert berapa hari sebelumnya?</label><input id="alertDays" type="number" min="0" value="10" required></div>
+<div><label>Catatan</label><input id="notes" placeholder="Contoh: Nomor utama operasional"></div>
+<div><label>Kode Belakang</label><input id="backCode" placeholder="Contoh: 4582 atau kode khusus"></div>
 </div>
 <div class="actions">
 <button class="btn-primary" id="saveBtn" type="submit">Simpan Data</button>
@@ -79,7 +81,7 @@ dialog::backdrop{background:rgba(16,24,40,.55)}.modal-head{padding:17px 20px;bac
 <div class="panel table-wrap">
 <table><thead><tr>
 <th>NOMOR KARTU</th><th>MASA AKTIF</th><th>BANK</th><th>NAMA</th><th>DUEDATE</th>
-<th>TODAY</th><th>SISA HARI</th><th>STATUS</th><th>AKSI</th>
+<th>TODAY</th><th>SISA HARI</th><th>STATUS</th><th>CATATAN</th><th>KODE BELAKANG</th><th>AKSI</th>
 </tr></thead><tbody id="tableBody"></tbody></table>
 <div id="emptyState" class="empty">Belum ada data.</div>
 </div>
@@ -117,14 +119,7 @@ async function api(url="",options={}){
 async function loadCards(showAlert=false){
  try{
   setSync("Sinkronisasi...");
-  const response = await api();
-
-cards = Array.isArray(response)
-  ? response
-  : Array.isArray(response.results)
-    ? response.results
-    : [];
-  
+  cards=await api();
   setSync("● Tersinkron","online");
   render();
   if(showAlert)checkAlerts();
@@ -138,13 +133,14 @@ function render(){
  $("expiredCount").textContent=all.filter(x=>x.status==="EXPIRED").length;
  $("okCount").textContent=all.filter(x=>x.status==="OK").length;
  const rows=all.filter(x=>filter==="ALL"||x.status===filter)
- .filter(x=>[x.card.card_number,x.card.bank,x.card.name].join(" ").toLowerCase().includes(q))
+ .filter(x=>[x.card.card_number,x.card.bank,x.card.name,x.card.notes||"",x.card.back_code||""].join(" ").toLowerCase().includes(q))
  .sort((a,b)=>a.expiry-b.expiry);
  $("tableBody").innerHTML=rows.map(x=>`<tr class="${x.status.toLowerCase()}">
  <td><strong>${esc(x.card.card_number)}</strong></td><td>${fmt(x.expiry)}</td>
  <td>${esc(x.card.bank)}</td><td>${esc(x.card.name)}</td><td>${fmt(x.due)}</td>
  <td>${fmt(x.today)}</td><td>${x.remaining<0?Math.abs(x.remaining)+" hari lewat":x.remaining+" hari"}</td>
  <td><span class="badge ${x.status.toLowerCase()}">${x.status==="ALERT"?"MAU EXPIRED":x.status}</span></td>
+ <td>${esc(x.card.notes||"-")}</td><td>${esc(x.card.back_code||"-")}</td>
  <td class="row-actions"><button class="btn-light" onclick="editCard(${x.card.id})">Edit</button>
  <button class="btn-danger" onclick="deleteCard(${x.card.id})">Hapus</button></td></tr>`).join("");
  $("emptyState").style.display=rows.length?"none":"block";
@@ -156,7 +152,7 @@ $("cardForm").onsubmit=async e=>{
  e.preventDefault();
  const id=$("editId").value;
  const body={card_number:$("cardNumber").value.trim(),bank:$("bank").value.trim().toUpperCase(),
- name:$("name").value.trim().toUpperCase(),expiry_date:$("expiryDate").value,alert_days:Number($("alertDays").value)};
+ name:$("name").value.trim().toUpperCase(),expiry_date:$("expiryDate").value,alert_days:Number($("alertDays").value),notes:$("notes").value.trim(),back_code:$("backCode").value.trim()};
  try{
   $("saveBtn").disabled=true;
   await api(id?`?id=${id}`:"",{method:id?"PUT":"POST",body:JSON.stringify(body)});
@@ -166,7 +162,7 @@ $("cardForm").onsubmit=async e=>{
 window.editCard=id=>{
  const c=cards.find(x=>x.id===id); if(!c)return;
  $("editId").value=c.id;$("cardNumber").value=c.card_number;$("bank").value=c.bank;
- $("name").value=c.name;$("expiryDate").value=c.expiry_date;$("alertDays").value=c.alert_days;
+ $("name").value=c.name;$("expiryDate").value=c.expiry_date;$("alertDays").value=c.alert_days;$("notes").value=c.notes||"";$("backCode").value=c.back_code||"";
  $("saveBtn").textContent="Update Data";$("cancelBtn").style.display="inline-block";scrollTo({top:0,behavior:"smooth"});
 };
 window.deleteCard=async id=>{

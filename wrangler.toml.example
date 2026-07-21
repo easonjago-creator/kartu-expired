@@ -1,0 +1,9 @@
+# Ganti database_id dengan ID D1 Anda jika deploy melalui Wrangler.
+name = "kartu-expired"
+compatibility_date = "2026-07-22"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kartu-expired-db"
+database_id = "GANTI_DENGAN_DATABASE_ID"
